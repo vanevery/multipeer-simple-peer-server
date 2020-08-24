@@ -80,8 +80,9 @@
 				}
 			});
 			
-			function incomingData(data) {
+			function incomingData(from, data) {
 				consolelog(data);
+				document.getElementById("data_received").innerHTML += from + ": " + data + "<br />";
 			}	
 		
 			window.addEventListener('load', function() {
@@ -143,14 +144,14 @@
 				});
 
 				/* 
-					When Simple Peer starts up, it generate a "signal" which is an "offer" 
+					When Simple Peer starts up, it generates a "signal" which is an "offer" 
 					that can be sent to another peer to initiate a connection.  It is
 					essentially our address.
 				
 					When we get an "answer" "signal" it means that someone got our "offer"
 					and is essentially giving us their address.	
 					
-					Here we are assuming we want to connect to any one who wants to connect
+					Here we are assuming we want to connect to anyone who wants to connect
 					to us.
 				*/
 
@@ -174,7 +175,7 @@
 
 				/* Receive Data */
 				simplepeer.on('data', data => {
-					consolelog('DATA: ' + data)
+					consolelog('DATA: ' + data);
 					data_cb(socket_id, data);
 				});
 
