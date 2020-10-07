@@ -1,34 +1,33 @@
-// HTTP Portion
-var http = require('http');
-var fs = require('fs'); // Using the filesystem module
-var httpServer = http.createServer(requestHandler);
-var url = require('url');
-httpServer.listen(8080);
+// We need the file system here
+var fs = require('fs');
+				
+// Express is a node module for building HTTP servers
+var express = require('express');
+var app = express();
 
-function requestHandler(req, res) {
+// Tell Express to look in the "public" folder for any files first
+app.use(express.static('public'));
 
-	var parsedUrl = url.parse(req.url);
-	console.log("The Request is: " + parsedUrl.pathname);
-		
-	fs.readFile(__dirname + parsedUrl.pathname, 
-		// Callback function for reading
-		function (err, data) {
-			// if there is an error
-			if (err) {
-				res.writeHead(500);
-				return res.end('Error loading ' + parsedUrl.pathname);
-			}
-			// Otherwise, send the data, the contents of the file
-			res.writeHead(200);
-			res.end(data);
-  		}
-  	);
-  	
-  	/*
-  	res.writeHead(200);
-  	res.end("Life is wonderful");
-  	*/
-}
+// If the user just goes to the "route" / then run this function
+app.get('/', function (req, res) {
+  res.send('Hello World!')
+});
+
+// Here is the actual HTTP server 
+// In this case, HTTPS (secure) server
+var https = require('https');
+
+// Security options - key and certificate
+var options = {
+  key: fs.readFileSync('star_itp_io.key'),
+  cert: fs.readFileSync('star_itp_io.pem')
+};
+
+// We pass in the Express object and the options object
+var httpServer = https.createServer(options, app);
+
+// Default HTTPS port
+httpServer.listen(443);
 
 /* 
 This server simply keeps track of the peers all in one big "room"
@@ -91,7 +90,7 @@ io.sockets.on('connection',
 				if (peers[i].socket.id == socket.id) {
 					peers.splice(i,1);
 				} else {
-					peers.socket.emit('disconnect', socket.id);
+					peers[i].socket.emit('peer_disconnect', socket.id);
 				}
 			}			
 		});
