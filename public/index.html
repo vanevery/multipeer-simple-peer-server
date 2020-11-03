@@ -8,12 +8,16 @@
 			let simplepeers = [];
 			var socket;
 			var mystream;
+
+			let sendDataButton;
+			let dataInput; 
 			
 			window.addEventListener('load', function() {
 				
 				// This kicks it off
 				initCapture();
 				
+				setupGUI();
 			});
 
 			function initCapture() {
@@ -83,7 +87,7 @@
 
 							// create a new simplepeer and we'll be the "initiator"			
 							let simplepeer = new SimplePeerWrapper(
-								true, data[i], socket, mystream
+								true, data[i], socket, mystream, receivedStream, receivedData
 							);
 
 							// Push into our array
@@ -119,7 +123,7 @@
 						console.log("Never found right simplepeer object");
 						// Let's create it then, we won't be the "initiator"
 						let simplepeer = new SimplePeerWrapper(
-							false, from, socket, mystream
+							false, from, socket, mystream, receivedStream, receivedData
 						);
 						
 						// Push into our array
@@ -132,10 +136,45 @@
 
 			}
 
+			// Whenever we get a stream from a peer
+			function receivedStream(stream, simplePeerWrapper) {
+				let ovideo = document.createElement("VIDEO");
+				ovideo.id = simplePeerWrapper.socket_id;
+				ovideo.srcObject = stream;
+				ovideo.muted = true;
+				ovideo.onloadedmetadata = function(e) {
+					ovideo.play();
+				};					
+				document.body.appendChild(ovideo);
+				console.log(ovideo);
+			}
+
+			// Whenever we get data from a peer
+			function receivedData(theData, simplePeerWrapper) {
+				document.getElementById("data").innerHTML += theData + "<br />";
+			}
+
+			// When the button is clicked - send it to everyone we are connected to
+			function sendData(data) {
+				for (let i = 0; i < simplepeers.length; i++) {
+					simplepeers[i].sendData(data);
+				}
+			}
+
+			// Register listeners to the HTML Elements
+			function setupGUI() {
+				sendDataButton = document.getElementById("sendDataButton");
+				dataInput = document.getElementById("dataInput");
+
+				sendDataButton.addEventListener('click', function() {
+					sendData(dataInput.value);
+				});
+			}
+ 
 			// A wrapper for simplepeer as we need a bit more than it provides
 			class SimplePeerWrapper {
 
- 				constructor(initiator, socket_id, socket, stream) {
+ 				constructor(initiator, socket_id, socket, stream, streamCallback, dataCallback) {
 					this.simplepeer = new SimplePeer({
 						initiator: initiator,
 						trickle: false
@@ -149,6 +188,12 @@
 
 					// Our video stream - need getters and setters for this
 					this.stream = stream;
+
+					// Callback for when we get a stream from a peer
+					this.streamCallback = streamCallback;
+
+					// Callback for when we get data form a peer
+					this.dataCallback = dataCallback;
 
 					// simplepeer generates signals which need to be sent across socket
 					this.simplepeer.on('signal', data => {						
@@ -169,24 +214,21 @@
 					// Stream coming in to us
 					this.simplepeer.on('stream', stream => {
 						console.log('Incoming Stream');
-
-						// This should really be a callback
-						// Create a video object
-						let ovideo = document.createElement("VIDEO");
-						ovideo.id = this.socket_id;
-						ovideo.srcObject = stream;
-						ovideo.onloadedmetadata = function(e) {
-							ovideo.play();
-						};					
-						document.body.appendChild(ovideo);
-						console.log(ovideo);
-					});					
+						streamCallback(stream, this);
+					});		
+					
+					this.simplepeer.on('data', data => {
+						dataCallback(data, this);
+					});
 				}
   
 				inputsignal(sig) {
 					this.simplepeer.signal(sig);
 				}
 
+				sendData(data) {
+					this.simplepeer.send(data);
+				}
 			}			
 
 		</script>
@@ -196,6 +238,9 @@
 		My Video:
 		<video id="myvideo" width="400" height="300" muted></video>
 	</div>
+	<div id="data">
 
+	</div>
+	<input type="text" id="dataInput"><input type="button" id="sendDataButton">
   </body>
 </html>
