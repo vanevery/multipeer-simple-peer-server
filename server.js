@@ -77,20 +77,13 @@ io.sockets.on('connection',
 			}
 		});
 		
-		//	socket.on("call-user", data => {
-		//    socket.to(data.to).emit("call-made", {
-		//      offer: data.offer,
-		//      socket: socket.id
-		//    });
-		//  });
-		
 		socket.on('disconnect', function() {
 			console.log("Client has disconnected " + socket.id);
+			io.emit('peer_disconnect', socket.id);
 			for (let i = 0; i < peers.length; i++) {
 				if (peers[i].socket.id == socket.id) {
 					peers.splice(i,1);
-				} else {
-					peers[i].socket.emit('peer_disconnect', socket.id);
+					break;
 				}
 			}			
 		});
