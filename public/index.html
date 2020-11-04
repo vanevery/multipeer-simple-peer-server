@@ -70,10 +70,15 @@
 
 				socket.on('peer_disconnect', function(data) {
 					console.log("simplepeer has disconnected " + data);
-					for (let i = 0; i < peers.length; i++) {
+					for (let i = 0; i < simplepeers.length; i++) {
 						if (simplepeers[i].socket_id == data) {
 							console.log("Removing simplepeer: " + i);
 							simplepeers.splice(i,1);
+
+							// Should also remove any elements from page
+							document.getElementById(data).remove();
+
+							break;
 						} 
 					}			
 				});			
