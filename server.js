@@ -38,7 +38,7 @@ let peers = [];
 
 // WebSocket Portion
 // WebSockets work with the HTTP server
-var io = require('socket.io').listen(httpServer);
+var io = require('socket.io')(httpServer);
 
 // Register a callback function to run when we have an individual connection
 // This is run for each individual user that connects
