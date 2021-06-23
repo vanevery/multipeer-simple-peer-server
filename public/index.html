@@ -4,7 +4,9 @@
 		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
 	
 		<script type="text/javascript">
-				
+			const videoBitrate = 500; //kbps
+			const audioBitrate = 100; //kbps
+
 			let simplepeers = [];
 			var socket;
 			var mystream;
@@ -92,7 +94,7 @@
 
 							// create a new simplepeer and we'll be the "initiator"			
 							let simplepeer = new SimplePeerWrapper(
-								true, data[i], socket, mystream, receivedStream, receivedData
+								true, data[i], socket, mystream, receivedStream, receivedData, videoBitrate, audioBitrate
 							);
 
 							// Push into our array
@@ -128,7 +130,7 @@
 						console.log("Never found right simplepeer object");
 						// Let's create it then, we won't be the "initiator"
 						let simplepeer = new SimplePeerWrapper(
-							false, from, socket, mystream, receivedStream, receivedData
+							false, from, socket, mystream, receivedStream, receivedData, videoBitrate, audioBitrate
 						);
 						
 						// Push into our array
@@ -178,12 +180,29 @@
  
 			// A wrapper for simplepeer as we need a bit more than it provides
 			class SimplePeerWrapper {
-
- 				constructor(initiator, socket_id, socket, stream, streamCallback, dataCallback) {
-					this.simplepeer = new SimplePeer({
-						initiator: initiator,
-						trickle: false
-					});				
+				constructor(initiator, socket_id, socket, stream, streamCallback, dataCallback, videoBitrate = null, audioBitrate = null) {
+					if (!videoBitrate && !audioBitrate) {
+						this.simplepeer = new SimplePeer({
+							initiator: initiator,
+							trickle: false       
+						});
+					} else {
+						this.simplepeer = new SimplePeer({
+							initiator: initiator,
+							trickle: false,
+							sdpTransform: (sdp) => {
+								let newSDP = sdp;
+								if (videoBitrate) {
+									newSDP = this.setMediaBitrate(sdp, videoBitrate, 'video');
+								}
+								if (audioBitrate) {
+									newSDP = this.setMediaBitrate(newSDP, audioBitrate, 'audio');
+								}
+								console.log(newSDP);
+								return newSDP;   
+							}         
+						});
+					}
 
 					// Their socket id, our unique id for them
 					this.socket_id = socket_id;
@@ -234,6 +253,45 @@
 				sendData(data) {
 					this.simplepeer.send(data);
 				}
+
+				// Borrowed from after https://webrtchacks.com/limit-webrtc-bandwidth-sdp/
+				setMediaBitrate(sdp, bitrate, mediaType = 'video') {
+					var lines = sdp.split("\n");
+					var line = -1;
+					for (var i = 0; i < lines.length; i++) {
+					if (lines[i].indexOf("m="+mediaType) === 0) {
+						line = i;
+						break;
+					}
+					}
+					if (line === -1) {
+					console.debug("Could not find the m line for", mediaType);
+					return sdp;
+					}
+					console.debug("Found the m line for", mediaType, "at line", line);
+				
+					// Pass the m line
+					line++;
+				
+					// Skip i and c lines
+					while(lines[line].indexOf("i=") === 0 || lines[line].indexOf("c=") === 0) {
+					line++;
+					}
+				
+					// If we're on a b line, replace it
+					if (lines[line].indexOf("b") === 0) {
+					console.debug("Replaced b line at line", line);
+					lines[line] = "b=AS:"+bitrate;
+					return lines.join("\n");
+					}
+					
+					// Add a new b line
+					console.debug("Adding new b line before line", line);
+					var newLines = lines.slice(0, line)
+					newLines.push("b=AS:"+bitrate)
+					newLines = newLines.concat(lines.slice(line, lines.length))
+					return newLines.join("\n")        
+				}				
 			}			
 
 		</script>
