@@ -1,4 +1,4 @@
-window.addEventListener("load", () => {
+window.addEventListener("DOMContentLoaded", () => {
     const videoBitrate = 500; //kbps
     const audioBitrate = 100; //kbps
 
