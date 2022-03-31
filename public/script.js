@@ -14,7 +14,7 @@ window.addEventListener("load", () => {
         ovideo.id = simplePeerWrapper.socket_id;
         ovideo.srcObject = stream;
         ovideo.muted = true;
-        ovideo.onloadedmetadata = (e) => {
+        ovideo.onloadedmetadata = () => {
             ovideo.play();
         };
         document.body.appendChild(ovideo);
@@ -40,7 +40,7 @@ window.addEventListener("load", () => {
         video.srcObject = stream;
 
         // Wait for the stream to load enough to play
-        video.onloadedmetadata = (e) => {
+        video.onloadedmetadata = () => {
             video.play();
         };
 

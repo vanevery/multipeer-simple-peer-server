@@ -110,8 +110,10 @@ class SimplePeerWrapper {
         // When we have a connection, send our stream
         this.simplepeer.on("connect", () => {
             // Let's give them our stream
-            this.simplepeer.addStream(stream);
-            console.log("Send our stream");
+            if (stream) {
+                this.simplepeer.addStream(stream);
+                console.log("Send our stream");
+            }
         });
 
         // Stream coming in to us
