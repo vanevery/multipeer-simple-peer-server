@@ -1,91 +1,71 @@
-// We need the file system here
-var fs = require('fs');
-				
 // Express is a node module for building HTTP servers
-var express = require('express');
-var app = express();
+const express = require("express");
+const app = express();
 
 // Tell Express to look in the "public" folder for any files first
-app.use(express.static('public'));
+app.use(express.static("public"));
 
 // If the user just goes to the "route" / then run this function
-app.get('/', function (req, res) {
-  res.send('Hello World!')
+app.get("/", function (req, res) {
+    res.send("Hello World!");
 });
 
-// Here is the actual HTTP server 
-// In this case, HTTPS (secure) server
-var https = require('https');
+const port = process.env.PORT || 8080;
 
-// Security options - key and certificate
-var options = {
-  key: fs.readFileSync('star_itp_io.key'),
-  cert: fs.readFileSync('star_itp_io.pem')
-};
+// Here is the actual HTTP server
+const http = require("http");
 
 // We pass in the Express object and the options object
-var httpServer = https.createServer(options, app);
+const httpServer = http.createServer(app);
 
 // Default HTTPS port
-httpServer.listen(443);
+httpServer.listen(port);
 
-/* 
-This server simply keeps track of the peers all in one big "room"
-and relays signal messages back and forth.
-*/
-
-let peers = [];
+/*
+ This server simply keeps track of the peers all in one big "room"
+ and relays signal messages back and forth.
+ */
+const peers = new Map();
 
 // WebSocket Portion
 // WebSockets work with the HTTP server
-var io = require('socket.io')(httpServer);
+const { Server } = require("socket.io");
+const io = new Server(httpServer, {
+    cors: {
+        origin: true,
+        methods: ["GET", "POST"]
+    }
+});
+
+console.log(`Server started on port ${ port }`);
 
 // Register a callback function to run when we have an individual connection
 // This is run for each individual user that connects
-io.sockets.on('connection', 
+io.sockets.on("connection",
 
-	// We are given a websocket object in our function
-	function (socket) {
-	
-		peers.push({socket: socket});
-		console.log("We have a new client: " + socket.id + " peers length: " + peers.length);
-		
-		socket.on('list', function() {
-			let ids = [];
-			for (let i = 0; i < peers.length; i++) {
-				ids.push(peers[i].socket.id);
-			}
-			console.log("ids length: " + ids.length);
-			socket.emit('listresults', ids);			
-		});
-		
-		// Relay signals back and forth
-		socket.on('signal', (to, from, data) => {
-			console.log("SIGNAL", to, data);
-			let found = false;
-			for (let i = 0; i < peers.length; i++) {
-				console.log(peers[i].socket.id, to);
-				if (peers[i].socket.id == to) {
-					console.log("Found Peer, sending signal");
-					peers[i].socket.emit('signal', to, from, data);
-					found = true;
-					break;
-				}				
-			}	
-			if (!found) {
-				console.log("never found peer");
-			}
-		});
-		
-		socket.on('disconnect', function() {
-			console.log("Client has disconnected " + socket.id);
-			io.emit('peer_disconnect', socket.id);
-			for (let i = 0; i < peers.length; i++) {
-				if (peers[i].socket.id == socket.id) {
-					peers.splice(i,1);
-					break;
-				}
-			}			
-		});
-	}
+    // We are given a websocket object in our function
+    function (socket) {
+        peers.set(socket.id, socket);
+        console.log(`Peer ${ socket.id } joined`);
+
+        socket.on("list", function () {
+            socket.emit("listresults", [...peers.keys()]);
+        });
+
+        // Relay signals back and forth
+        socket.on("signal", (to, from, data) => {
+            const peer = peers.get(to);
+            if (peer) {
+                peer.emit("signal", to, from, data);
+            } else {
+                console.error(`Peer ${ to } not found`);
+            }
+        });
+
+        socket.on("disconnect", function () {
+            console.log(`Peer ${ socket.id } left`);
+            io.emit("peer_disconnect", socket.id);
+            peers.delete(socket.id);
+        });
+    }
 );
