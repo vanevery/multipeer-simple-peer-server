@@ -1,8 +1,8 @@
 <html>
 	<head>
-	 	<script src="simplepeer.min.js"></script>
-		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
-	
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.0/simplepeer.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.0/socket.io.js"></script>
+
 		<script type="text/javascript">
 			const videoBitrate = 500; //kbps
 			const audioBitrate = 100; //kbps
@@ -12,19 +12,19 @@
 			var mystream;
 
 			let sendDataButton;
-			let dataInput; 
-			
+			let dataInput;
+
 			window.addEventListener('load', function() {
-				
+
 				// This kicks it off
 				initCapture();
-				
+
 				setupGUI();
 			});
 
 			function initCapture() {
 				console.log("initCapture");
-				
+
 				// The video element on the page to display the webcam
 				let video = document.getElementById('myvideo');
 
@@ -40,7 +40,7 @@
 
 					// Attach to our video object
 					video.srcObject = stream;
-					
+
 					// Wait for the stream to load enough to play
 					video.onloadedmetadata = function(e) {
 						video.play();
@@ -51,13 +51,13 @@
 				})
 				.catch(function(err) {
 					/* Handle the error */
-					alert(err);  
-				});	
+					alert(err);
+				});
 			}
 
 			function setupSocket() {
 				socket = io.connect();
-				
+
 				socket.on('connect', function() {
 					console.log("Socket Connected**");
 					console.log("My socket id: ", socket.id);
@@ -81,42 +81,42 @@
 							document.getElementById(data).remove();
 
 							break;
-						} 
-					}			
-				});			
+						}
+					}
+				});
 
-				// Receive listresults from server
-				socket.on('listresults', function (data) {
+				// Receive list results from server
+				socket.on('list-results', function (data) {
 					console.log(data);
 					for (let i = 0; i < data.length; i++) {
 						// Make sure it's not us
-						if (data[i] != socket.id) {	
+						if (data[i] != socket.id) {
 
-							// create a new simplepeer and we'll be the "initiator"			
+							// create a new simplepeer and we'll be the "initiator"
 							let simplepeer = new SimplePeerWrapper(
 								true, data[i], socket, mystream, receivedStream, receivedData, videoBitrate, audioBitrate
 							);
 
 							// Push into our array
-							simplepeers.push(simplepeer);	
+							simplepeers.push(simplepeer);
 						}
 					}
 				});
-				
+
 				socket.on('signal', function(to, from, data) {
-				
+
 					console.log("Got a signal from the server: ", to, from, data);
 
 					// to should be us
 					if (to != socket.id) {
 						console.log("Socket IDs don't match");
 					}
-				
+
 					// Look for the right simplepeer in our array
 					let found = false;
 					for (let i = 0; i < simplepeers.length; i++)
 					{
-						
+
 						if (simplepeers[i].socket_id == from) {
 							console.log("Found right object");
 							// Give that simplepeer the signal
@@ -124,18 +124,18 @@
 							found = true;
 							break;
 						}
-					
-					}	
+
+					}
 					if (!found) {
 						console.log("Never found right simplepeer object");
 						// Let's create it then, we won't be the "initiator"
 						let simplepeer = new SimplePeerWrapper(
 							false, from, socket, mystream, receivedStream, receivedData, videoBitrate, audioBitrate
 						);
-						
+
 						// Push into our array
-						simplepeers.push(simplepeer);	
-							
+						simplepeers.push(simplepeer);
+
 						// Tell the new simplepeer that signal
 						simplepeer.inputsignal(data);
 					}
@@ -151,7 +151,7 @@
 				ovideo.muted = true;
 				ovideo.onloadedmetadata = function(e) {
 					ovideo.play();
-				};					
+				};
 				document.body.appendChild(ovideo);
 				console.log(ovideo);
 			}
@@ -177,14 +177,14 @@
 					sendData(dataInput.value);
 				});
 			}
- 
+
 			// A wrapper for simplepeer as we need a bit more than it provides
 			class SimplePeerWrapper {
 				constructor(initiator, socket_id, socket, stream, streamCallback, dataCallback, videoBitrate = null, audioBitrate = null) {
 					if (!videoBitrate && !audioBitrate) {
 						this.simplepeer = new SimplePeer({
 							initiator: initiator,
-							trickle: false       
+							trickle: false
 						});
 					} else {
 						this.simplepeer = new SimplePeer({
@@ -199,8 +199,8 @@
 									newSDP = this.setMediaBitrate(newSDP, audioBitrate, 'audio');
 								}
 								console.log(newSDP);
-								return newSDP;   
-							}         
+								return newSDP;
+							}
 						});
 					}
 
@@ -220,7 +220,7 @@
 					this.dataCallback = dataCallback;
 
 					// simplepeer generates signals which need to be sent across socket
-					this.simplepeer.on('signal', data => {						
+					this.simplepeer.on('signal', data => {
 						this.socket.emit('signal', this.socket_id, this.socket.id, data);
 					});
 
@@ -239,13 +239,13 @@
 					this.simplepeer.on('stream', stream => {
 						console.log('Incoming Stream');
 						streamCallback(stream, this);
-					});		
-					
+					});
+
 					this.simplepeer.on('data', data => {
 						dataCallback(data, this);
 					});
 				}
-  
+
 				inputsignal(sig) {
 					this.simplepeer.signal(sig);
 				}
@@ -269,30 +269,30 @@
 					return sdp;
 					}
 					console.debug("Found the m line for", mediaType, "at line", line);
-				
+
 					// Pass the m line
 					line++;
-				
+
 					// Skip i and c lines
 					while(lines[line].indexOf("i=") === 0 || lines[line].indexOf("c=") === 0) {
 					line++;
 					}
-				
+
 					// If we're on a b line, replace it
 					if (lines[line].indexOf("b") === 0) {
 					console.debug("Replaced b line at line", line);
 					lines[line] = "b=AS:"+bitrate;
 					return lines.join("\n");
 					}
-					
+
 					// Add a new b line
 					console.debug("Adding new b line before line", line);
 					var newLines = lines.slice(0, line)
 					newLines.push("b=AS:"+bitrate)
 					newLines = newLines.concat(lines.slice(line, lines.length))
-					return newLines.join("\n")        
-				}				
-			}			
+					return newLines.join("\n")
+				}
+			}
 
 		</script>
 	</head>

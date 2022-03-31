@@ -49,7 +49,7 @@ io.sockets.on("connection",
         console.log(`Peer ${ socket.id } joined`);
 
         socket.on("list", function () {
-            socket.emit("listresults", [...peers.keys()]);
+            socket.emit("list-results", [...peers.keys()]);
         });
 
         // Relay signals back and forth
