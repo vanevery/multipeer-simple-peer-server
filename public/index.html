@@ -1,18 +1,20 @@
 <html>
-	<head>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.0/simplepeer.min.js"></script>
-		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.0/socket.io.js"></script>
-		<script type="text/javascript" src="./multipeer-connection.js"></script>
-		<script type="text/javascript" src="./script.js"></script>
-	</head>
-  <body>
-	<div>
-		My Video:
-		<video id="myvideo" width="400" height="300" muted></video>
-	</div>
-	<div id="data">
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/simple-peer/9.11.0/simplepeer.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.0/socket.io.js"></script>
+        <script type="text/javascript" src="./multipeer-connection.js"></script>
+        <script type="text/javascript" src="./script.js"></script>
+        <title>Multi-Peer Connection</title>
+    </head>
+    <body>
+        <div>
+            My Video:
+            <video id="myvideo" width="400" height="300" muted></video>
+        </div>
+        <div id="data">
 
-	</div>
-	<input type="text" id="dataInput"><input type="button" id="sendDataButton">
-  </body>
+        </div>
+        <input type="text" id="dataInput"><input type="button" id="sendDataButton">
+    </body>
 </html>
