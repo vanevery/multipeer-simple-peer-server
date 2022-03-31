@@ -1,0 +1,289 @@
+const videoBitrate = 500; //kbps
+const audioBitrate = 100; //kbps
+
+let simplepeers = [];
+var socket;
+var mystream;
+
+let sendDataButton;
+let dataInput;
+
+window.addEventListener('load', function() {
+
+    // This kicks it off
+    initCapture();
+
+    setupGUI();
+});
+
+function initCapture() {
+    console.log("initCapture");
+
+    // The video element on the page to display the webcam
+    let video = document.getElementById('myvideo');
+
+    // Constraints - what do we want?
+    let constraints = { audio: true, video: true }
+
+    // Prompt the user for permission, get the stream
+    navigator.mediaDevices.getUserMedia(constraints).then(function(stream) {
+        /* Use the stream */
+
+        // Global object
+        mystream = stream;
+
+        // Attach to our video object
+        video.srcObject = stream;
+
+        // Wait for the stream to load enough to play
+        video.onloadedmetadata = function(e) {
+            video.play();
+        };
+
+        // Now setup socket
+        setupSocket();
+    })
+    .catch(function(err) {
+        /* Handle the error */
+        alert(err);
+    });
+}
+
+function setupSocket() {
+    socket = io.connect();
+
+    socket.on('connect', function() {
+        console.log("Socket Connected**");
+        console.log("My socket id: ", socket.id);
+
+        // Tell the server we want a list of the other users
+        socket.emit('list');
+    });
+
+    socket.on('disconnect', function(data) {
+        console.log("Socket disconnected");
+    });
+
+    socket.on('peer_disconnect', function(data) {
+        console.log("simplepeer has disconnected " + data);
+        for (let i = 0; i < simplepeers.length; i++) {
+            if (simplepeers[i].socket_id == data) {
+                console.log("Removing simplepeer: " + i);
+                simplepeers.splice(i,1);
+
+                // Should also remove any elements from page
+                document.getElementById(data).remove();
+
+                break;
+            }
+        }
+    });
+
+    // Receive list results from server
+    socket.on('list-results', function (data) {
+        console.log(data);
+        for (let i = 0; i < data.length; i++) {
+            // Make sure it's not us
+            if (data[i] != socket.id) {
+
+                // create a new simplepeer and we'll be the "initiator"
+                let simplepeer = new SimplePeerWrapper(
+                    true, data[i], socket, mystream, receivedStream, receivedData, videoBitrate, audioBitrate
+                );
+
+                // Push into our array
+                simplepeers.push(simplepeer);
+            }
+        }
+    });
+
+    socket.on('signal', function(to, from, data) {
+
+        console.log("Got a signal from the server: ", to, from, data);
+
+        // to should be us
+        if (to != socket.id) {
+            console.log("Socket IDs don't match");
+        }
+
+        // Look for the right simplepeer in our array
+        let found = false;
+        for (let i = 0; i < simplepeers.length; i++)
+        {
+
+            if (simplepeers[i].socket_id == from) {
+                console.log("Found right object");
+                // Give that simplepeer the signal
+                simplepeers[i].inputsignal(data);
+                found = true;
+                break;
+            }
+
+        }
+        if (!found) {
+            console.log("Never found right simplepeer object");
+            // Let's create it then, we won't be the "initiator"
+            let simplepeer = new SimplePeerWrapper(
+                false, from, socket, mystream, receivedStream, receivedData, videoBitrate, audioBitrate
+            );
+
+            // Push into our array
+            simplepeers.push(simplepeer);
+
+            // Tell the new simplepeer that signal
+            simplepeer.inputsignal(data);
+        }
+    });
+
+}
+
+// Whenever we get a stream from a peer
+function receivedStream(stream, simplePeerWrapper) {
+    let ovideo = document.createElement("VIDEO");
+    ovideo.id = simplePeerWrapper.socket_id;
+    ovideo.srcObject = stream;
+    ovideo.muted = true;
+    ovideo.onloadedmetadata = function(e) {
+        ovideo.play();
+    };
+    document.body.appendChild(ovideo);
+    console.log(ovideo);
+}
+
+// Whenever we get data from a peer
+function receivedData(theData, simplePeerWrapper) {
+    document.getElementById("data").innerHTML += theData + "<br />";
+}
+
+// When the button is clicked - send it to everyone we are connected to
+function sendData(data) {
+    for (let i = 0; i < simplepeers.length; i++) {
+        simplepeers[i].sendData(data);
+    }
+}
+
+// Register listeners to the HTML Elements
+function setupGUI() {
+    sendDataButton = document.getElementById("sendDataButton");
+    dataInput = document.getElementById("dataInput");
+
+    sendDataButton.addEventListener('click', function() {
+        sendData(dataInput.value);
+    });
+}
+
+// A wrapper for simplepeer as we need a bit more than it provides
+class SimplePeerWrapper {
+    constructor(initiator, socket_id, socket, stream, streamCallback, dataCallback, videoBitrate = null, audioBitrate = null) {
+        if (!videoBitrate && !audioBitrate) {
+            this.simplepeer = new SimplePeer({
+                initiator: initiator,
+                trickle: false
+            });
+        } else {
+            this.simplepeer = new SimplePeer({
+                initiator: initiator,
+                trickle: false,
+                sdpTransform: (sdp) => {
+                    let newSDP = sdp;
+                    if (videoBitrate) {
+                        newSDP = this.setMediaBitrate(sdp, videoBitrate, 'video');
+                    }
+                    if (audioBitrate) {
+                        newSDP = this.setMediaBitrate(newSDP, audioBitrate, 'audio');
+                    }
+                    console.log(newSDP);
+                    return newSDP;
+                }
+            });
+        }
+
+        // Their socket id, our unique id for them
+        this.socket_id = socket_id;
+
+        // Socket.io Socket
+        this.socket = socket;
+
+        // Our video stream - need getters and setters for this
+        this.stream = stream;
+
+        // Callback for when we get a stream from a peer
+        this.streamCallback = streamCallback;
+
+        // Callback for when we get data form a peer
+        this.dataCallback = dataCallback;
+
+        // simplepeer generates signals which need to be sent across socket
+        this.simplepeer.on('signal', data => {
+            this.socket.emit('signal', this.socket_id, this.socket.id, data);
+        });
+
+        // When we have a connection, send our stream
+        this.simplepeer.on('connect', () => {
+            console.log('CONNECT')
+            console.log(this.simplepeer);
+            //p.send('whatever' + Math.random())
+
+            // Let's give them our stream
+            this.simplepeer.addStream(stream);
+            console.log("Send our stream");
+        });
+
+        // Stream coming in to us
+        this.simplepeer.on('stream', stream => {
+            console.log('Incoming Stream');
+            streamCallback(stream, this);
+        });
+
+        this.simplepeer.on('data', data => {
+            dataCallback(data, this);
+        });
+    }
+
+    inputsignal(sig) {
+        this.simplepeer.signal(sig);
+    }
+
+    sendData(data) {
+        this.simplepeer.send(data);
+    }
+
+    // Borrowed from after https://webrtchacks.com/limit-webrtc-bandwidth-sdp/
+    setMediaBitrate(sdp, bitrate, mediaType = 'video') {
+        var lines = sdp.split("\n");
+        var line = -1;
+        for (var i = 0; i < lines.length; i++) {
+            if (lines[i].indexOf("m="+mediaType) === 0) {
+                line = i;
+                break;
+            }
+        }
+        if (line === -1) {
+            console.debug("Could not find the m line for", mediaType);
+            return sdp;
+        }
+        console.debug("Found the m line for", mediaType, "at line", line);
+
+        // Pass the m line
+        line++;
+
+        // Skip i and c lines
+        while(lines[line].indexOf("i=") === 0 || lines[line].indexOf("c=") === 0) {
+            line++;
+        }
+
+        // If we're on a b line, replace it
+        if (lines[line].indexOf("b") === 0) {
+            console.debug("Replaced b line at line", line);
+            lines[line] = "b=AS:"+bitrate;
+            return lines.join("\n");
+        }
+
+        // Add a new b line
+        console.debug("Adding new b line before line", line);
+        var newLines = lines.slice(0, line)
+        newLines.push("b=AS:"+bitrate)
+        newLines = newLines.concat(lines.slice(line, lines.length))
+        return newLines.join("\n")
+    }
+}
