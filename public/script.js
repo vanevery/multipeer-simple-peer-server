@@ -45,13 +45,20 @@ window.addEventListener("load", () => {
         };
 
         // Now setup socket
-        const multipeerConnection = new MultiPeerConnection(stream, receivedStream, receivedData, peerDisconnected, videoBitrate, audioBitrate);
+        const multiPeerConnection = new MultiPeerConnection({
+            stream,
+            onStream: receivedStream,
+            onData: receivedData,
+            onPeerDisconnect: peerDisconnected,
+            videoBitrate,
+            audioBitrate
+        });
 
         const sendDataButton = document.getElementById("sendDataButton");
         const dataInput = document.getElementById("dataInput");
 
         sendDataButton.addEventListener("click", () => {
-            multipeerConnection.sendData(dataInput.value);
+            multiPeerConnection.sendData(dataInput.value);
         });
     }).catch((err) => {
         alert(err);

@@ -1,7 +1,7 @@
 class MultiPeerConnection {
-    constructor(stream, onStream, onData, onPeerDisconnect, videoBitrate = null, audioBitrate = null) {
+    constructor({ stream, onStream, onData, onPeerDisconnect, host , videoBitrate = null, audioBitrate = null }) {
         this.peers = new Map();
-        this.socket = io.connect();
+        this.socket = host ? io.connect(host) : io.connect();
 
         this.socket.on("connect", () => {
             // Tell the server we want a list of the other users
