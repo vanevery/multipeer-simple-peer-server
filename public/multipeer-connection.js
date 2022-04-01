@@ -1,5 +1,5 @@
 class MultiPeerConnection {
-    constructor({ stream, onStream, onData, onPeerDisconnect, host , videoBitrate = null, audioBitrate = null }) {
+    constructor({ stream, onStream, onData, onPeerDisconnect, host, videoBitrate = null, audioBitrate = null }) {
         this.peers = new Map();
         this.socket = host ? io.connect(host) : io.connect();
 
@@ -10,7 +10,7 @@ class MultiPeerConnection {
 
         this.socket.on("peer_disconnect", (data) => {
             this.peers.delete(data);
-            onPeerDisconnect(data);
+            onPeerDisconnect && onPeerDisconnect(data);
         });
 
         // Receive list results from server
@@ -113,11 +113,11 @@ class SimplePeerWrapper {
 
         // Stream coming in to us
         this.simplepeer.on("stream", (stream) => {
-            streamCallback(stream, this);
+            streamCallback && streamCallback(stream, this);
         });
 
         this.simplepeer.on("data", (data) => {
-            dataCallback(data, this);
+            dataCallback && dataCallback(data, this);
         });
     }
 
