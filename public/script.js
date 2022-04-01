@@ -18,7 +18,6 @@ window.addEventListener("DOMContentLoaded", () => {
             ovideo.play();
         };
         document.body.appendChild(ovideo);
-        console.log(ovideo);
     }
 
     // Whenever we get data from a peer

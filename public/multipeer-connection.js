@@ -9,7 +9,6 @@ class MultiPeerConnection {
         });
 
         this.socket.on("peer_disconnect", (data) => {
-            console.log(`Peer ${ data } left`);
             this.peers.delete(data);
             onPeerDisconnect(data);
         });
@@ -18,8 +17,6 @@ class MultiPeerConnection {
         this.socket.on("list-results", (data) => {
             for (let id of data) {
                 if (id !== this.socket.id) {
-                    console.log(`Connecting to peer ${ id }`);
-
                     let peer = new SimplePeerWrapper(
                         true, id, this.socket, stream, onStream, onData, videoBitrate, audioBitrate
                     );
@@ -32,7 +29,7 @@ class MultiPeerConnection {
         this.socket.on("signal", (to, from, data) => {
             // to should be us
             if (to !== this.socket.id) {
-                console.log("Socket IDs don't match");
+                console.error("Socket IDs don't match");
                 return;
             }
 
@@ -81,7 +78,6 @@ class SimplePeerWrapper {
                     if (audioBitrate) {
                         newSDP = this.setMediaBitrate(newSDP, audioBitrate, "audio");
                     }
-                    console.log(newSDP);
                     return newSDP;
                 }
             });
@@ -112,13 +108,11 @@ class SimplePeerWrapper {
             // Let's give them our stream
             if (stream) {
                 this.simplepeer.addStream(stream);
-                console.log("Send our stream");
             }
         });
 
         // Stream coming in to us
         this.simplepeer.on("stream", (stream) => {
-            console.log("Incoming Stream");
             streamCallback(stream, this);
         });
 
