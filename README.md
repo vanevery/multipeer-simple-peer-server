@@ -2,7 +2,7 @@
 
 This is a fork of [multipeer-simple-peer-server](https://github.com/vanevery/multipeer-simple-peer-server).
 
-The main reason behind this fork or rewrite is that:
+The main reason behind this partial rewrite is that:
 
 1. [`p5LiveMedia`](https://github.com/vanevery/p5LiveMedia) is too high-level and contains some default `p5` operations that is redundant to plain JavaScript projects.
 2. The original [`multipeer-simple-peer-server`](https://github.com/vanevery/multipeer-simple-peer-server) uses `Array`s to keep track of peers, which can be easily improved upon using the ES6 `Map` to achieve `O(1)` complexity.
