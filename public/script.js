@@ -13,7 +13,10 @@ window.addEventListener("DOMContentLoaded", () => {
         let ovideo = document.createElement("VIDEO");
         ovideo.id = simplePeerWrapper.socket_id;
         ovideo.srcObject = stream;
-        ovideo.muted = true;
+        ovideo.autoplay = true;
+        ovideo.playsInline = true;
+        ovideo.setAttribute("autoplay", "");
+        ovideo.setAttribute("playsinline", "");
         ovideo.onloadedmetadata = () => {
             ovideo.play();
         };
@@ -37,6 +40,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
         // Attach to our video object
         video.srcObject = stream;
+
+        video.muted = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.setAttribute("autoplay", "");
+        video.setAttribute("muted", "");
+        video.setAttribute("playsinline", "");
 
         // Wait for the stream to load enough to play
         video.onloadedmetadata = () => {
