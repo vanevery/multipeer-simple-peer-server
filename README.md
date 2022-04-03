@@ -1,6 +1,6 @@
 # MultiPeerConnection
 
-This is a fork of [multipeer-simple-peer-server](https://github.com/vanevery/multipeer-simple-peer-server).
+**A More Efficient and User-Friendly [`multipeer-simple-peer-server`](https://github.com/vanevery/multipeer-simple-peer-server)**
 
 The main reason behind this partial rewrite is that:
 
