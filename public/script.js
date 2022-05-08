@@ -55,7 +55,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
         // Now setup socket
         const multiPeerConnection = new MultiPeerConnection({
-            stream,
+            streams: new Set([stream]),
             onStream: receivedStream,
             onData: receivedData,
             onPeerDisconnect: peerDisconnected,

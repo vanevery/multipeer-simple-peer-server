@@ -1,12 +1,19 @@
 class MultiPeerConnection {
-    constructor({ stream, onStream, onData, onPeerDisconnect, host, videoBitrate = null, audioBitrate = null }) {
+    constructor({
+                    socket,
+                    streams,
+                    onStream,
+                    onData,
+                    onPeerConnect,
+                    onPeerDisconnect,
+                    host,
+                    videoBitrate = null,
+                    audioBitrate = null,
+                }) {
         this.peers = new Map();
-        this.socket = host ? io.connect(host) : io.connect();
+        this.streams = streams || new Set();
 
-        this.socket.on("connect", () => {
-            // Tell the server we want a list of the other users
-            this.socket.emit("list");
-        });
+        this.socket = socket || (host ? io.connect(host) : io.connect());
 
         this.socket.on("peer_disconnect", (data) => {
             this.peers.delete(data);
@@ -39,7 +46,15 @@ class MultiPeerConnection {
                 peer.inputsignal(data);
             } else {
                 const peer = new SimplePeerWrapper(
-                    false, from, this.socket, stream, onStream, onData, videoBitrate, audioBitrate
+                    false,
+                    from,
+                    this.socket,
+                    this.streams,
+                    onPeerConnect,
+                    onStream,
+                    onData,
+                    videoBitrate,
+                    audioBitrate
                 );
 
                 this.peers.set(from, peer);
@@ -55,16 +70,59 @@ class MultiPeerConnection {
             peer.sendData(data);
         }
     }
-}
 
+    addStream(stream) {
+        this.streams.add(stream);
+        for (let peer of this.peers.values()) {
+            peer.addStream(stream);
+        }
+    }
+
+    removeStream(stream) {
+        for (let peer of this.peers.values()) {
+            peer.removeStream(stream);
+        }
+        this.streams.delete(stream);
+    }
+
+    removeStreamsTo(id) {
+        const peer = this.peers.get(id);
+
+        if (peer) {
+            if (this.streams) {
+                this.streams.forEach((stream) => {
+                    peer.removeStream(stream);
+                });
+            }
+        }
+    }
+
+    close() {
+        for (let peer of this.peers.values()) {
+            peer.destroy();
+        }
+
+        this.peers.clear();
+    }
+}
 
 // A wrapper for simplepeer as we need a bit more than it provides
 class SimplePeerWrapper {
-    constructor(initiator, socket_id, socket, stream, streamCallback, dataCallback, videoBitrate = null, audioBitrate = null) {
+    constructor(
+        initiator,
+        socket_id,
+        socket,
+        streams,
+        peerConnectCallback,
+        streamCallback,
+        dataCallback,
+        videoBitrate = null,
+        audioBitrate = null
+    ) {
         if (!videoBitrate && !audioBitrate) {
             this.simplepeer = new SimplePeer({
                 initiator: initiator,
-                trickle: false
+                trickle: false,
             });
         } else {
             this.simplepeer = new SimplePeer({
@@ -79,9 +137,11 @@ class SimplePeerWrapper {
                         newSDP = this.setMediaBitrate(newSDP, audioBitrate, "audio");
                     }
                     return newSDP;
-                }
+                },
             });
         }
+
+        this.connected = false;
 
         // Their socket id, our unique id for them
         this.socket_id = socket_id;
@@ -90,7 +150,7 @@ class SimplePeerWrapper {
         this.socket = socket;
 
         // Our video stream - need getters and setters for this
-        this.stream = stream;
+        this.streams = streams;
 
         // Callback for when we get a stream from a peer
         this.streamCallback = streamCallback;
@@ -105,10 +165,14 @@ class SimplePeerWrapper {
 
         // When we have a connection, send our stream
         this.simplepeer.on("connect", () => {
+            this.connected = true;
             // Let's give them our stream
-            if (stream) {
-                this.simplepeer.addStream(stream);
+            if (streams) {
+                streams.forEach((stream) => {
+                    this.addStream(stream);
+                });
             }
+            peerConnectCallback && peerConnectCallback(this);
         });
 
         // Stream coming in to us
@@ -129,6 +193,32 @@ class SimplePeerWrapper {
         this.simplepeer.send(data);
     }
 
+    addStream(stream) {
+        if (!this.connected) return;
+
+        try {
+            this.simplepeer.addStream(stream);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    removeStream(stream) {
+        try {
+            this.simplepeer.removeStream(stream);
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    destroy() {
+        try {
+            this.simplepeer.destroy();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
     // Borrowed from after https://webrtchacks.com/limit-webrtc-bandwidth-sdp/
     setMediaBitrate(sdp, bitrate, mediaType = "video") {
         const lines = sdp.split("\n");
@@ -140,10 +230,8 @@ class SimplePeerWrapper {
             }
         }
         if (line === -1) {
-            console.debug("Could not find the m line for", mediaType);
             return sdp;
         }
-        console.debug("Found the m line for", mediaType, "at line", line);
 
         // Pass the m line
         line++;
@@ -155,13 +243,11 @@ class SimplePeerWrapper {
 
         // If we're on a b line, replace it
         if (lines[line].indexOf("b") === 0) {
-            console.debug("Replaced b line at line", line);
             lines[line] = "b=AS:" + bitrate;
             return lines.join("\n");
         }
 
         // Add a new b line
-        console.debug("Adding new b line before line", line);
         let newLines = lines.slice(0, line);
         newLines.push("b=AS:" + bitrate);
         newLines = newLines.concat(lines.slice(line, lines.length));

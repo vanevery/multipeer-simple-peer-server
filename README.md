@@ -12,24 +12,26 @@ I abstracted away the boilerplate code into a `MultiPeerConnection` class in [`m
 
 ```js
 const multiPeerConnection = new MultiPeerConnection({
-    host: null, // default to current server if used with `server.js`
-    stream: videoStream,
+    socket: io.connect(host), // could either provide a socket instance or specify a host name
+    // host: null, // default to current server if used with `server.js
+    streams: new Set([videoStream]), // a Set of all available streams
     onStream: receivedStreamCallback,
     onData: receivedDataCallback,
+    onPeerConnect: peerConnectedCallback,
     onPeerDisconnect: peerDisconnectedCallback,
     videoBitrate: 500, // 500kbps
     audioBitrate: 100, // 100kbps
 });
 ```
 
-`MultiPeerConnection` has a `sendData` method that accepts a string and would send that through data channel to all connected peers.
+`MultiPeerConnection` has a `sendData` method that accepts a string and would send that through data channel to all connected peers, an `addStream` and a `removeStream` method that accept a `MediaStream` object and add or remove the stream for all the peers, a `removeStreamsTo` method that accepts the id of a connected peer and remove all streams sent to that peer, and a `close` method that closes the peer-to-peer connection with all peers.
 
-`MultiPeerConnection` also has properties `peers` and `socket` that stores all connected peers and the current user’s [`socket.io`](https://socket.io/) socket, respectively.
+`MultiPeerConnection` also has properties `peers`, `socket`, and `streams` that stores all connected peers, the current user’s [`socket.io`](https://socket.io/) socket, and all the `MediaStream` objects being sent to the peers, respectively.
 
 The `onStream` callback takes in two parameters, the `MediaStream` object received from [`simple-peer`](https://github.com/feross/simple-peer), and the `SimplePeerWrapper` object from which the media stream is received.
 
 The `onData` callback also takes in two parameters, the data received from [`simple-peer`](https://github.com/feross/simple-peer), and the `SimplePeerWrapper` object from which the data is received.
 
-The `onPeerDisconnect` callback takes just one parameter, the [`socket.io`](https://socket.io/) id of the disconnected peer.
+The `onPeerConnect` and `onPeerDisconnect` callbacks take just one parameter, the [`socket.io`](https://socket.io/) id of the connected or disconnected peer.
 
 All options and callbacks can be ignored to create a data-channel only connection that can broadcast data but has no callback (which probably isn’t what you want, but that’s legal).
