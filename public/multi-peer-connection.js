@@ -15,6 +15,11 @@ class MultiPeerConnection {
 
         this.socket = socket || (host ? io.connect(host) : io.connect());
 
+        this.socket.on("connect", () => {
+            // Tell the server we want a list of the other users
+            this.socket.emit("list");
+        });
+
         this.socket.on("peer_disconnect", (data) => {
             this.peers.delete(data);
             onPeerDisconnect && onPeerDisconnect(data);
@@ -25,7 +30,7 @@ class MultiPeerConnection {
             for (let id of data) {
                 if (id !== this.socket.id) {
                     let peer = new SimplePeerWrapper(
-                        true, id, this.socket, stream, onStream, onData, videoBitrate, audioBitrate
+                        true, id, this.socket, this.streams, onPeerConnect, onStream, onData, videoBitrate, audioBitrate
                     );
 
                     this.peers.set(id, peer);
