@@ -25,7 +25,8 @@ httpServer.listen(port);
  This server simply keeps track of the peers all in one big "room"
  and relays signal messages back and forth.
  */
-const peers = new Map();
+
+const peers = () => io.of("/").adapter.sids.keys();
 
 // WebSocket Portion
 // WebSockets work with the HTTP server
@@ -45,27 +46,20 @@ io.sockets.on("connection",
 
     // We are given a websocket object in our function
     function (socket) {
-        peers.set(socket.id, socket);
         console.log(`Peer ${ socket.id } joined`);
 
         socket.on("list", function () {
-            socket.emit("list-results", [...peers.keys()]);
+            socket.emit("list-results", [...peers()]);
         });
 
         // Relay signals back and forth
         socket.on("signal", (to, from, data) => {
-            const peer = peers.get(to);
-            if (peer) {
-                peer.emit("signal", to, from, data);
-            } else {
-                console.error(`Peer ${ to } not found`);
-            }
+            io.to(to).emit("signal", to, from, data)
         });
 
         socket.on("disconnect", function () {
             console.log(`Peer ${ socket.id } left`);
             io.emit("peer_disconnect", socket.id);
-            peers.delete(socket.id);
         });
     }
 );
