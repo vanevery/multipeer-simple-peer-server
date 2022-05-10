@@ -1,6 +1,7 @@
 class MultiPeerConnection {
     constructor({
                     socket,
+                    stream,
                     streams,
                     onStream,
                     onData,
@@ -12,6 +13,10 @@ class MultiPeerConnection {
                 }) {
         this.peers = new Map();
         this.streams = streams || new Set();
+
+        if (stream) {
+            this.streams.add(stream);
+        }
 
         this.socket = socket || (host ? io.connect(host) : io.connect());
 

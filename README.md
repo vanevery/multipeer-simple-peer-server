@@ -14,7 +14,8 @@ I abstracted away the boilerplate code into a `MultiPeerConnection` class in [`m
 const multiPeerConnection = new MultiPeerConnection({
     socket: io.connect(host), // could either provide a socket instance or specify a host name
     // host: null, // default to current server if used with `server.js
-    streams: new Set([videoStream]), // a Set of all available streams
+    stream: videoStream, // either one `MediaStream` or a `Set` of all `MediaStream`s,
+    // streams: new Set(), // default to an empty set
     onStream: receivedStreamCallback,
     onData: receivedDataCallback,
     onPeerConnect: peerConnectedCallback,
